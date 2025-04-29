@@ -125,7 +125,7 @@ local function setupTeleportHook()
             repeat wait() until game:IsLoaded()
             
             -- Execute script again with loadstring
-            loadstring(game:HttpGet('https://raw.githubusercontent.com/YourUsername/RobloxScripts/main/UniversalScript.lua'))()
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/freeopensourcesoftware/ui/refs/heads/main/UniversalScript.lua'))()
         ]]
         
         -- Queue the script to run after teleport
@@ -136,7 +136,7 @@ local function setupTeleportHook()
             repeat wait() until game:IsLoaded()
             
             -- Execute script again via HttpGet to avoid file path issues
-            loadstring(game:HttpGet('https://raw.githubusercontent.com/YourUsername/RobloxScripts/main/UniversalScript.lua'))()
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/freeopensourcesoftware/ui/refs/heads/main/UniversalScript.lua'))()
         ]])
     end
 end
