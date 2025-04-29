@@ -557,48 +557,62 @@ end)
 
 -- Notification on successful load
 local function notify(text, duration)
-    -- Use pcall to avoid property errors
-    pcall(function()
-        local Notification = Instance.new("Frame")
-        Notification.Name = "Notification"
-        Notification.Size = UDim2.new(0, 250, 0, 50)
-        Notification.Position = UDim2.new(0.5, -125, 0.05, 0)
-        Notification.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        Notification.BorderSizePixel = 0
-        Notification.Parent = UniversalGui
+    -- Completely rewrite the notification system to avoid UI errors
+    task.spawn(function()
+        -- First, print to output for reliability
+        print("[Universal Script] " .. text)
         
-        local NotifText = Instance.new("TextLabel")
-        NotifText.Name = "NotifText"
-        NotifText.Size = UDim2.new(1, -10, 1, 0)
-        NotifText.Position = UDim2.new(0, 5, 0, 0)
-        NotifText.BackgroundTransparency = 1
-        NotifText.TextColor3 = Color3.fromRGB(255, 255, 255)
-        NotifText.TextSize = 14
-        NotifText.Font = Enum.Font.Gotham
-        NotifText.Text = text
-        NotifText.TextWrapped = true
-        NotifText.Parent = Notification
-        
-        -- Animation
-        Notification.BackgroundTransparency = 1
-        NotifText.TextTransparency = 1
-        
-        TweenService:Create(Notification, TweenInfo.new(0.5), {BackgroundTransparency = 0}):Play()
-        TweenService:Create(NotifText, TweenInfo.new(0.5), {TextTransparency = 0}):Play()
-        
-        delay(duration, function()
-            pcall(function()
-                TweenService:Create(Notification, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
-                TweenService:Create(NotifText, TweenInfo.new(0.5), {TextTransparency = 1}):Play()
-                wait(0.5)
-                Notification:Destroy()
+        -- Then try GUI notification with error handling
+        pcall(function()
+            -- Simple text notification using TextLabel only (no Frame)
+            local NotifText = Instance.new("TextLabel")
+            NotifText.Name = "Notification_" .. math.random(1000, 9999)
+            NotifText.Size = UDim2.new(0, 250, 0, 50)
+            -- Fixed absolute position to avoid UDim2 issues
+            NotifText.Position = UDim2.new(0, 10, 0, 10)
+            NotifText.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            NotifText.TextColor3 = Color3.fromRGB(255, 255, 255)
+            NotifText.BackgroundTransparency = 0.2
+            NotifText.TextSize = 14
+            NotifText.Text = text
+            NotifText.TextWrapped = true
+            NotifText.BorderSizePixel = 1
+            NotifText.BorderColor3 = Color3.fromRGB(60, 60, 60)
+            
+            -- Use StarterGui or other fallbacks if available
+            local success = false
+            
+            -- Try different parent options for maximum compatibility
+            if not success and UniversalGui and UniversalGui.Parent then
+                NotifText.Parent = UniversalGui
+                success = true
+            end
+            
+            if not success and game:GetService("CoreGui") then
+                pcall(function() 
+                    NotifText.Parent = game:GetService("CoreGui")
+                    success = true
+                end)
+            end
+            
+            if not success and LocalPlayer:FindFirstChild("PlayerGui") then
+                NotifText.Parent = LocalPlayer.PlayerGui
+                success = true
+            end
+            
+            -- Remove after duration
+            task.delay(duration, function()
+                pcall(function() NotifText:Destroy() end)
             end)
         end)
     end)
 end
 
--- Initial notification
-notify("Universal Script loaded! Press Right Ctrl to toggle UI", 5)
+-- Initial notification - use task.spawn to avoid any blocking
+task.spawn(function()
+    wait(1) -- Give time for everything to load
+    notify("Universal Script loaded! Press Right Ctrl to toggle UI", 5)
+end)
 
 -- Print to console (optional)
 print("Universal Script loaded successfully")
