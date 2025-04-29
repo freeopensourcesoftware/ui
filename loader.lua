@@ -1,17 +1,51 @@
-
 local Library={
 Version="1.0.0",
 Flags={}
 }
 
-local Players=game:GetService("Players")
-local TweenService=game:GetService("TweenService")
-local UserInputService=game:GetService("UserInputService")
-local RunService=game:GetService("RunService")
-local CoreGui=game:GetService("CoreGui")
+local function SafeGetService(serviceName)
+    local success, service = pcall(function()
+        return game:GetService(serviceName)
+    end)
+    
+    if success and service then
+        return service
+    else
+        warn("Failed to get service: " .. serviceName)
+        if serviceName == "Players" then
+            return game:FindService("Players") or {}
+        elseif serviceName == "CoreGui" then
+            return game:FindService("CoreGui") or 
+                   game:FindService("StarterGui") or 
+                   game:FindFirstChild("PlayerGui") or 
+                   {}
+        end
+        return {}
+    end
+end
+
+local Players=SafeGetService("Players")
+local TweenService=SafeGetService("TweenService")
+local UserInputService=SafeGetService("UserInputService")
+local RunService=SafeGetService("RunService")
+local CoreGui=SafeGetService("CoreGui")
+
 local LocalPlayer=Players.LocalPlayer
-local Mouse=LocalPlayer:GetMouse()
-local Debris=game:GetService("Debris")
+if not LocalPlayer then
+    LocalPlayer={GetMouse=function() return {X=0,Y=0} end}
+    warn("LocalPlayer not available, using mock")
+end
+
+local Mouse=nil
+pcall(function()
+    Mouse=LocalPlayer:GetMouse()
+end)
+if not Mouse then
+    Mouse={X=0,Y=0}
+    warn("Mouse not available, using mock")
+end
+
+local Debris=SafeGetService("Debris")
 
 local function Create(instance,properties)
 local obj=Instance.new(instance)
@@ -22,8 +56,11 @@ return obj
 end
 
 function Library:Tween(instance,properties,duration)
-local tween=TweenService:Create(instance,TweenInfo.new(duration or 0.25,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),properties)
-tween:Play()
+local tween=nil
+pcall(function()
+    tween=TweenService:Create(instance,TweenInfo.new(duration or 0.25,Enum.EasingStyle.Quad,Enum.EasingDirection.Out),properties)
+    tween:Play()
+end)
 return tween
 end
 
@@ -35,13 +72,44 @@ local WindowSize=options.Size or UDim2.new(0,500,0,350)
 local ToggleKey=options.Key or Enum.KeyCode.RightShift
 local WindowObj={}
 
-local ScreenGui=Create("ScreenGui",{
-Name="ModernUI",
-ZIndexBehavior=Enum.ZIndexBehavior.Sibling,
-ResetOnSpawn=false,
-Parent=CoreGui
+-- Determine best parent for GUI
+local guiParent = CoreGui
+if not (typeof(guiParent) == "Instance" and guiParent:IsA("ScreenGui") or guiParent:IsA("LayerCollector")) then
+    -- Fallback to PlayerGui if available
+    if LocalPlayer and LocalPlayer:FindFirstChild("PlayerGui") then
+        guiParent = LocalPlayer.PlayerGui
+        print("Using PlayerGui instead of CoreGui")
+    else
+        -- Last resort fallback
+        guiParent = game:GetService("StarterGui")
+        print("Using StarterGui as fallback")
+    end
+end
+
+local ScreenGui = nil
+pcall(function()
+    ScreenGui=Create("ScreenGui",{
+        Name="ModernUI",
+        ZIndexBehavior=Enum.ZIndexBehavior.Sibling,
+        ResetOnSpawn=false,
+        Parent=guiParent
+    })
 })
 
+-- If ScreenGui creation failed, try alternative method
+if not ScreenGui then
+    ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "ModernUI"
+    ScreenGui.ResetOnSpawn = false
+    pcall(function() ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling end)
+    pcall(function() ScreenGui.Parent = guiParent end)
+    
+    if not ScreenGui.Parent then
+        warn("Failed to parent ScreenGui, UI may not appear")
+    end
+end
+
+-- Continue with rest of UI creation
 local MainFrame=Create("Frame",{
 Name="MainFrame",
 AnchorPoint=Vector2.new(0.5,0.5),
@@ -227,6 +295,7 @@ local Tabs={}
 
 function WindowObj:Tab(name)
 local TabObj={}
+
 local TabButton=Create("TextButton",{
 Name=name,
 BackgroundColor3=Color3.fromRGB(30,30,30),
@@ -301,6 +370,7 @@ end)
 
 function TabObj:Section(name)
 local SectionObj={}
+
 local Section=Create("Frame",{
 Name=name,
 BackgroundColor3=Color3.fromRGB(30,30,30),
@@ -486,7 +556,7 @@ local SliderMin=options.Min or 0
 local SliderMax=options.Max or 100
 local SliderDefault=options.Default or SliderMin
 local SliderIncrement=options.Increment or 1
-local SliderUnit=options.Unit or""
+local SliderUnit=options.Unit or"" 
 local SliderCallback=options.Callback or function()end
 local Flag=options.Flag or(SliderName.."Slider")
 
